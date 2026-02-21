@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { agentApi } from '../api/agentApi';
 import { ApiError } from '../../../services/httpClient';
-import type { Agent, CreateAgentInput, AgentSearchParams, PaginationInfo, ValidationError } from '../../../types/agent';
+import type { Agent, CreateAgentInput, AgentSearchParams, PaginationInfo } from '../../../types/agent';
 
 export const useAgentStore = defineStore('agents', () => {
   // State
@@ -18,7 +18,7 @@ export const useAgentStore = defineStore('agents', () => {
 
   // Error state
   const errorMessage = ref('');
-  const validationErrors = ref<ValidationError[]>([]);
+  const errorCode = ref('');
 
   // AbortController for canceling requests
   let fetchAbortController: AbortController | null = null;
@@ -30,7 +30,12 @@ export const useAgentStore = defineStore('agents', () => {
   // Actions
   function clearError() {
     errorMessage.value = '';
-    validationErrors.value = [];
+    errorCode.value = '';
+  }
+
+  function setError(error: ApiError) {
+    errorMessage.value = error.message;
+    errorCode.value = error.code;
   }
 
   function cancelPendingFetch() {
@@ -55,7 +60,11 @@ export const useAgentStore = defineStore('agents', () => {
       if (error instanceof Error && error.name === 'AbortError') {
         return; // Request was canceled, don't update state
       }
-      errorMessage.value = 'Failed to load agents. Please try again.';
+      if (error instanceof ApiError) {
+        setError(error);
+      } else {
+        errorMessage.value = 'Failed to load agents. Please try again.';
+      }
       console.error('Failed to fetch agents:', error);
     } finally {
       isLoadingAgents.value = false;
@@ -82,12 +91,12 @@ export const useAgentStore = defineStore('agents', () => {
       await fetchAgents(currentSearchParams.value);
       return true;
     } catch (error) {
-      if (error instanceof ApiError && error.data.errors) {
-        validationErrors.value = error.data.errors;
+      if (error instanceof ApiError) {
+        setError(error);
       } else {
         errorMessage.value = 'Failed to create agent. Please try again.';
-        console.error('Failed to create agent:', error);
       }
+      console.error('Failed to create agent:', error);
       return false;
     } finally {
       isSaving.value = false;
@@ -104,12 +113,12 @@ export const useAgentStore = defineStore('agents', () => {
       await fetchAgents(currentSearchParams.value);
       return true;
     } catch (error) {
-      if (error instanceof ApiError && error.data.errors) {
-        validationErrors.value = error.data.errors;
+      if (error instanceof ApiError) {
+        setError(error);
       } else {
         errorMessage.value = 'Failed to update agent. Please try again.';
-        console.error('Failed to update agent:', error);
       }
+      console.error('Failed to update agent:', error);
       return false;
     } finally {
       isSaving.value = false;
@@ -132,7 +141,11 @@ export const useAgentStore = defineStore('agents', () => {
       await fetchAgents(currentSearchParams.value);
       return true;
     } catch (error) {
-      errorMessage.value = 'Failed to delete agent. Please try again.';
+      if (error instanceof ApiError) {
+        setError(error);
+      } else {
+        errorMessage.value = 'Failed to delete agent. Please try again.';
+      }
       console.error('Failed to delete agent:', error);
       return false;
     } finally {
@@ -148,10 +161,6 @@ export const useAgentStore = defineStore('agents', () => {
     editingAgent.value = null;
   }
 
-  function getValidationError(field: string): string | undefined {
-    return validationErrors.value.find((e) => e.field === field)?.message;
-  }
-
   return {
     // State
     agents,
@@ -162,7 +171,7 @@ export const useAgentStore = defineStore('agents', () => {
     isSaving,
     isDeleting,
     errorMessage,
-    validationErrors,
+    errorCode,
 
     // Computed
     hasAgents,
@@ -179,6 +188,5 @@ export const useAgentStore = defineStore('agents', () => {
     deleteAgent,
     startEditing,
     cancelEditing,
-    getValidationError,
   };
 });

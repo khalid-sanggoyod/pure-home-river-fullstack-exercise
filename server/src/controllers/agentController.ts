@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { agentRepository } from '../repositories/agentRepository';
 import { AgentSearchParams } from '../models/agent';
+import { sendSuccess, sendNotFound } from '../utils/apiResponse';
 
 export const getAll = (req: Request, res: Response) => {
   const page = req.query.page ? parseInt(req.query.page as string, 10) : undefined;
@@ -15,16 +16,16 @@ export const getAll = (req: Request, res: Response) => {
   };
 
   const result = agentRepository.search(searchParams);
-  res.json(result);
+  sendSuccess(res, result);
 };
 
 export const getById = (req: Request, res: Response) => {
   const agent = agentRepository.getById(req.params.id);
   if (!agent) {
-    res.status(404).json({ error: 'Agent not found' });
+    sendNotFound(res);
     return;
   }
-  res.json(agent);
+  sendSuccess(res, agent);
 };
 
 export const create = (req: Request, res: Response) => {
@@ -34,7 +35,7 @@ export const create = (req: Request, res: Response) => {
     email: req.body.email.trim().toLowerCase(),
     mobileNumber: req.body.mobileNumber.trim(),
   });
-  res.status(201).json(agent);
+  sendSuccess(res, agent, 201, 'Property Agent successfully created');
 };
 
 export const update = (req: Request, res: Response) => {
@@ -55,17 +56,17 @@ export const update = (req: Request, res: Response) => {
 
   const agent = agentRepository.update(req.params.id, updateData);
   if (!agent) {
-    res.status(404).json({ error: 'Agent not found' });
+    sendNotFound(res);
     return;
   }
-  res.json(agent);
+  sendSuccess(res, agent, 200, 'Property Agent successfully updated');
 };
 
 export const remove = (req: Request, res: Response) => {
   const deleted = agentRepository.delete(req.params.id);
   if (!deleted) {
-    res.status(404).json({ error: 'Agent not found' });
+    sendNotFound(res);
     return;
   }
-  res.status(204).send();
+  sendSuccess(res, null, 200, 'Property Agent successfully deleted');
 };

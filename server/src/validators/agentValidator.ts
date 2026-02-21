@@ -1,9 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-
-export interface ValidationError {
-  field: string;
-  message: string;
-}
+import { sendValidationError } from '../utils/apiResponse';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_REGEX = /^[\d\s\-+()]+$/;
@@ -22,31 +18,35 @@ function validateNonEmptyString(value: unknown): boolean {
 }
 
 export function validateCreateAgent(req: Request, res: Response, next: NextFunction): void {
-  const errors: ValidationError[] = [];
   const { firstName, lastName, email, mobileNumber } = req.body;
 
   if (!validateNonEmptyString(firstName)) {
-    errors.push({ field: 'firstName', message: 'First name is required and must be a non-empty string' });
+    sendValidationError(res, 'First name is required');
+    return;
   }
 
   if (!validateNonEmptyString(lastName)) {
-    errors.push({ field: 'lastName', message: 'Last name is required and must be a non-empty string' });
+    sendValidationError(res, 'Last name is required');
+    return;
   }
 
   if (!validateNonEmptyString(email)) {
-    errors.push({ field: 'email', message: 'Email is required' });
-  } else if (!validateEmail(email)) {
-    errors.push({ field: 'email', message: 'Email must be a valid email address' });
+    sendValidationError(res, 'Email is required');
+    return;
+  }
+
+  if (!validateEmail(email)) {
+    sendValidationError(res, 'Email format is invalid');
+    return;
   }
 
   if (!validateNonEmptyString(mobileNumber)) {
-    errors.push({ field: 'mobileNumber', message: 'Mobile number is required' });
-  } else if (!validatePhone(mobileNumber)) {
-    errors.push({ field: 'mobileNumber', message: 'Mobile number must be a valid phone number (7-15 digits)' });
+    sendValidationError(res, 'Mobile number is required');
+    return;
   }
 
-  if (errors.length > 0) {
-    res.status(400).json({ errors });
+  if (!validatePhone(mobileNumber)) {
+    sendValidationError(res, 'Mobile number must be a valid phone number (7-15 digits)');
     return;
   }
 
@@ -54,36 +54,38 @@ export function validateCreateAgent(req: Request, res: Response, next: NextFunct
 }
 
 export function validateUpdateAgent(req: Request, res: Response, next: NextFunction): void {
-  const errors: ValidationError[] = [];
   const { firstName, lastName, email, mobileNumber } = req.body;
 
   if (firstName !== undefined && !validateNonEmptyString(firstName)) {
-    errors.push({ field: 'firstName', message: 'First name must be a non-empty string' });
+    sendValidationError(res, 'First name must be a non-empty string');
+    return;
   }
 
   if (lastName !== undefined && !validateNonEmptyString(lastName)) {
-    errors.push({ field: 'lastName', message: 'Last name must be a non-empty string' });
+    sendValidationError(res, 'Last name must be a non-empty string');
+    return;
   }
 
   if (email !== undefined) {
     if (!validateNonEmptyString(email)) {
-      errors.push({ field: 'email', message: 'Email must be a non-empty string' });
-    } else if (!validateEmail(email)) {
-      errors.push({ field: 'email', message: 'Email must be a valid email address' });
+      sendValidationError(res, 'Email must be a non-empty string');
+      return;
+    }
+    if (!validateEmail(email)) {
+      sendValidationError(res, 'Email format is invalid');
+      return;
     }
   }
 
   if (mobileNumber !== undefined) {
     if (!validateNonEmptyString(mobileNumber)) {
-      errors.push({ field: 'mobileNumber', message: 'Mobile number must be a non-empty string' });
-    } else if (!validatePhone(mobileNumber)) {
-      errors.push({ field: 'mobileNumber', message: 'Mobile number must be a valid phone number (7-15 digits)' });
+      sendValidationError(res, 'Mobile number must be a non-empty string');
+      return;
     }
-  }
-
-  if (errors.length > 0) {
-    res.status(400).json({ errors });
-    return;
+    if (!validatePhone(mobileNumber)) {
+      sendValidationError(res, 'Mobile number must be a valid phone number (7-15 digits)');
+      return;
+    }
   }
 
   next();

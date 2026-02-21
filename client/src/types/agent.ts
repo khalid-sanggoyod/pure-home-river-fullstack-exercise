@@ -42,12 +42,21 @@ export interface PaginatedResult<T> {
   pagination: PaginationInfo;
 }
 
-export interface ValidationError {
-  field: string;
+// API Response Types
+export interface ApiSuccessResponse<T> {
+  success: true;
+  data: T;
+  message?: string;
+}
+
+export interface ApiErrorData {
+  code: string;
   message: string;
 }
 
 export interface ApiErrorResponse {
-  errors?: ValidationError[];
-  error?: string;
+  success: false;
+  error: ApiErrorData;
 }
+
+export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;

@@ -1,13 +1,18 @@
 import { ref, computed, watch } from 'vue';
 import { VALIDATION_PATTERNS, PHONE_DIGIT_LIMITS } from '../../../constants';
-import type { Agent, CreateAgentInput, ValidationError } from '../../../types/agent';
+import type { Agent, CreateAgentInput } from '../../../types/agent';
+
+interface FieldError {
+  field: string;
+  message: string;
+}
 
 export function useAgentForm(agentToEdit?: () => Agent | null | undefined) {
   const firstName = ref('');
   const lastName = ref('');
   const email = ref('');
   const mobileNumber = ref('');
-  const errors = ref<ValidationError[]>([]);
+  const errors = ref<FieldError[]>([]);
 
   const isEditing = computed(() => !!agentToEdit?.());
 
@@ -38,10 +43,6 @@ export function useAgentForm(agentToEdit?: () => Agent | null | undefined) {
 
   function getFieldError(field: string): string | undefined {
     return errors.value.find((e) => e.field === field)?.message;
-  }
-
-  function setErrors(errs: ValidationError[]) {
-    errors.value = errs;
   }
 
   function validateForm(): boolean {
@@ -96,7 +97,6 @@ export function useAgentForm(agentToEdit?: () => Agent | null | undefined) {
     isEditing,
     resetForm,
     getFieldError,
-    setErrors,
     validateForm,
     getFormData,
   };

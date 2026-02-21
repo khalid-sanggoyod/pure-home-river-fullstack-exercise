@@ -1,48 +1,40 @@
 import { ref } from 'vue';
 import { ApiError } from '../services/httpClient';
-import type { ValidationError } from '../types/agent';
 
 export function useApiError() {
   const errorMessage = ref('');
-  const validationErrors = ref<ValidationError[]>([]);
+  const errorCode = ref('');
 
   function clearError() {
     errorMessage.value = '';
-    validationErrors.value = [];
+    errorCode.value = '';
   }
 
-  function setError(message: string) {
+  function setError(message: string, code = '') {
     errorMessage.value = message;
+    errorCode.value = code;
   }
 
   function handleError(error: unknown, fallbackMessage: string) {
     if (error instanceof ApiError) {
-      if (error.data.errors) {
-        validationErrors.value = error.data.errors;
-      } else {
-        errorMessage.value = error.message || fallbackMessage;
-      }
+      errorMessage.value = error.message;
+      errorCode.value = error.code;
     } else {
       errorMessage.value = fallbackMessage;
       console.error(fallbackMessage, error);
     }
   }
 
-  function getFieldError(field: string): string | undefined {
-    return validationErrors.value.find((e) => e.field === field)?.message;
-  }
-
-  function hasValidationErrors(): boolean {
-    return validationErrors.value.length > 0;
+  function isValidationError(): boolean {
+    return errorCode.value === 'VALIDATION_ERROR';
   }
 
   return {
     errorMessage,
-    validationErrors,
+    errorCode,
     clearError,
     setError,
     handleError,
-    getFieldError,
-    hasValidationErrors,
+    isValidationError,
   };
 }

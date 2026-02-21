@@ -1,12 +1,13 @@
 import { API_BASE } from '../constants';
-import type { ApiErrorResponse } from '../types/agent';
+import type { ApiErrorData, ApiResponse } from '../types/agent';
 
 export class ApiError extends Error {
   constructor(
     public status: number,
-    public data: ApiErrorResponse
+    public code: string,
+    public override message: string
   ) {
-    super(data.error || 'An error occurred');
+    super(message);
     this.name = 'ApiError';
   }
 }
@@ -16,16 +17,17 @@ interface RequestOptions extends RequestInit {
 }
 
 async function handleResponse<T>(response: Response): Promise<T> {
-  if (!response.ok) {
-    const data = await response.json().catch(() => ({ error: 'Unknown error' }));
-    throw new ApiError(response.status, data);
+  const json = await response.json().catch(() => ({
+    success: false,
+    error: { code: 'UNKNOWN_ERROR', message: 'Unknown error occurred' },
+  })) as ApiResponse<T>;
+
+  if (!response.ok || !json.success) {
+    const errorData = (json as { success: false; error: ApiErrorData }).error;
+    throw new ApiError(response.status, errorData.code, errorData.message);
   }
 
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  return response.json();
+  return json.data;
 }
 
 function buildQueryString(params: Record<string, string | number | undefined>): string {

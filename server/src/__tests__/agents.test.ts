@@ -38,15 +38,17 @@ describe('Agent API', () => {
         .send(validAgent)
         .expect(201);
 
-      expect(res.body).toMatchObject({
+      expect(res.body.success).toBe(true);
+      expect(res.body.data).toMatchObject({
         firstName: 'John',
         lastName: 'Smith',
         email: 'john.smith@example.com',
         mobileNumber: '+1-555-123-4567',
       });
-      expect(res.body.id).toBeDefined();
-      expect(res.body.createdAt).toBeDefined();
-      expect(res.body.updatedAt).toBeDefined();
+      expect(res.body.data.id).toBeDefined();
+      expect(res.body.data.createdAt).toBeDefined();
+      expect(res.body.data.updatedAt).toBeDefined();
+      expect(res.body.message).toBe('Property Agent successfully created');
     });
 
     it('should return 400 for missing firstName', async () => {
@@ -55,9 +57,9 @@ describe('Agent API', () => {
         .send({ ...validAgent, firstName: '' })
         .expect(400);
 
-      expect(res.body.errors).toContainEqual(
-        expect.objectContaining({ field: 'firstName' })
-      );
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
+      expect(res.body.error.message).toContain('First name');
     });
 
     it('should return 400 for missing lastName', async () => {
@@ -66,9 +68,9 @@ describe('Agent API', () => {
         .send({ ...validAgent, lastName: '' })
         .expect(400);
 
-      expect(res.body.errors).toContainEqual(
-        expect.objectContaining({ field: 'lastName' })
-      );
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
+      expect(res.body.error.message).toContain('Last name');
     });
 
     it('should return 400 for invalid email', async () => {
@@ -77,9 +79,9 @@ describe('Agent API', () => {
         .send({ ...validAgent, email: 'invalid-email' })
         .expect(400);
 
-      expect(res.body.errors).toContainEqual(
-        expect.objectContaining({ field: 'email' })
-      );
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
+      expect(res.body.error.message).toContain('Email');
     });
 
     it('should return 400 for invalid phone number', async () => {
@@ -88,9 +90,9 @@ describe('Agent API', () => {
         .send({ ...validAgent, mobileNumber: '123' })
         .expect(400);
 
-      expect(res.body.errors).toContainEqual(
-        expect.objectContaining({ field: 'mobileNumber' })
-      );
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
+      expect(res.body.error.message).toContain('Mobile number');
     });
 
     it('should return 400 for missing email', async () => {
@@ -99,9 +101,8 @@ describe('Agent API', () => {
         .send({ ...validAgent, email: '' })
         .expect(400);
 
-      expect(res.body.errors).toContainEqual(
-        expect.objectContaining({ field: 'email' })
-      );
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
     });
 
     it('should return 400 for missing mobileNumber', async () => {
@@ -110,18 +111,18 @@ describe('Agent API', () => {
         .send({ ...validAgent, mobileNumber: '' })
         .expect(400);
 
-      expect(res.body.errors).toContainEqual(
-        expect.objectContaining({ field: 'mobileNumber' })
-      );
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
     });
 
-    it('should return multiple validation errors', async () => {
+    it('should return validation error for empty request body', async () => {
       const res = await request(app)
         .post('/api/agents')
         .send({})
         .expect(400);
 
-      expect(res.body.errors.length).toBeGreaterThanOrEqual(4);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
     });
   });
 
@@ -131,8 +132,9 @@ describe('Agent API', () => {
         .get('/api/agents')
         .expect(200);
 
-      expect(res.body.data).toEqual([]);
-      expect(res.body.pagination).toEqual({
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.data).toEqual([]);
+      expect(res.body.data.pagination).toEqual({
         page: 1,
         limit: 2,
         total: 0,
@@ -150,9 +152,10 @@ describe('Agent API', () => {
         .get('/api/agents')
         .expect(200);
 
-      expect(res.body.data).toHaveLength(2); // Default limit is 2
-      expect(res.body.pagination.total).toBe(3);
-      expect(res.body.pagination.totalPages).toBe(2);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.data).toHaveLength(2); // Default limit is 2
+      expect(res.body.data.pagination.total).toBe(3);
+      expect(res.body.data.pagination.totalPages).toBe(2);
     });
 
     it('should support pagination parameters', async () => {
@@ -165,8 +168,9 @@ describe('Agent API', () => {
         .get('/api/agents?page=2&limit=2')
         .expect(200);
 
-      expect(res.body.data).toHaveLength(1);
-      expect(res.body.pagination.page).toBe(2);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.data).toHaveLength(1);
+      expect(res.body.data.pagination.page).toBe(2);
     });
 
     it('should support search parameter', async () => {
@@ -177,8 +181,9 @@ describe('Agent API', () => {
         .get('/api/agents?search=john')
         .expect(200);
 
-      expect(res.body.data).toHaveLength(1);
-      expect(res.body.data[0].firstName).toBe('John');
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.data).toHaveLength(1);
+      expect(res.body.data.data[0].firstName).toBe('John');
     });
 
     it('should support createdFrom date filter', async () => {
@@ -192,7 +197,8 @@ describe('Agent API', () => {
         .get(`/api/agents?createdFrom=${tomorrowStr}`)
         .expect(200);
 
-      expect(res.body.data).toHaveLength(0);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.data).toHaveLength(0);
     });
 
     it('should support createdTo date filter', async () => {
@@ -206,7 +212,8 @@ describe('Agent API', () => {
         .get(`/api/agents?createdTo=${yesterdayStr}`)
         .expect(200);
 
-      expect(res.body.data).toHaveLength(0);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.data).toHaveLength(0);
     });
 
     it('should return agents within date range', async () => {
@@ -218,7 +225,8 @@ describe('Agent API', () => {
         .get(`/api/agents?createdFrom=${today}&createdTo=${today}`)
         .expect(200);
 
-      expect(res.body.data).toHaveLength(1);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.data).toHaveLength(1);
     });
 
     it('should handle invalid page parameter gracefully', async () => {
@@ -228,7 +236,8 @@ describe('Agent API', () => {
         .get('/api/agents?page=-1')
         .expect(200);
 
-      expect(res.body.pagination.page).toBe(1);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.pagination.page).toBe(1);
     });
 
     it('should handle invalid limit parameter gracefully', async () => {
@@ -238,7 +247,8 @@ describe('Agent API', () => {
         .get('/api/agents?limit=-1')
         .expect(200);
 
-      expect(res.body.pagination.limit).toBe(2);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.pagination.limit).toBe(2);
     });
   });
 
@@ -249,11 +259,12 @@ describe('Agent API', () => {
         .send(validAgent);
 
       const res = await request(app)
-        .get(`/api/agents/${createRes.body.id}`)
+        .get(`/api/agents/${createRes.body.data.id}`)
         .expect(200);
 
-      expect(res.body.id).toBe(createRes.body.id);
-      expect(res.body.firstName).toBe('John');
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.id).toBe(createRes.body.data.id);
+      expect(res.body.data.firstName).toBe('John');
     });
 
     it('should return 404 for non-existent agent', async () => {
@@ -261,7 +272,9 @@ describe('Agent API', () => {
         .get('/api/agents/non-existent-id')
         .expect(404);
 
-      expect(res.body.error).toBe('Agent not found');
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('AGENT_NOT_FOUND');
+      expect(res.body.error.message).toContain('does not exist');
     });
   });
 
@@ -272,12 +285,14 @@ describe('Agent API', () => {
         .send(validAgent);
 
       const res = await request(app)
-        .put(`/api/agents/${createRes.body.id}`)
+        .put(`/api/agents/${createRes.body.data.id}`)
         .send({ firstName: 'Jane' })
         .expect(200);
 
-      expect(res.body.firstName).toBe('Jane');
-      expect(res.body.lastName).toBe('Smith'); // Unchanged
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.firstName).toBe('Jane');
+      expect(res.body.data.lastName).toBe('Smith'); // Unchanged
+      expect(res.body.message).toBe('Property Agent successfully updated');
     });
 
     it('should return 404 for non-existent agent', async () => {
@@ -286,7 +301,8 @@ describe('Agent API', () => {
         .send({ firstName: 'Jane' })
         .expect(404);
 
-      expect(res.body.error).toBe('Agent not found');
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('AGENT_NOT_FOUND');
     });
 
     it('should return 400 for invalid email on update', async () => {
@@ -295,13 +311,13 @@ describe('Agent API', () => {
         .send(validAgent);
 
       const res = await request(app)
-        .put(`/api/agents/${createRes.body.id}`)
+        .put(`/api/agents/${createRes.body.data.id}`)
         .send({ email: 'invalid-email' })
         .expect(400);
 
-      expect(res.body.errors).toContainEqual(
-        expect.objectContaining({ field: 'email' })
-      );
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
+      expect(res.body.error.message).toContain('Email');
     });
 
     it('should return 400 for empty firstName on update', async () => {
@@ -310,13 +326,12 @@ describe('Agent API', () => {
         .send(validAgent);
 
       const res = await request(app)
-        .put(`/api/agents/${createRes.body.id}`)
+        .put(`/api/agents/${createRes.body.data.id}`)
         .send({ firstName: '' })
         .expect(400);
 
-      expect(res.body.errors).toContainEqual(
-        expect.objectContaining({ field: 'firstName' })
-      );
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
     });
 
     it('should return 400 for empty lastName on update', async () => {
@@ -325,13 +340,12 @@ describe('Agent API', () => {
         .send(validAgent);
 
       const res = await request(app)
-        .put(`/api/agents/${createRes.body.id}`)
+        .put(`/api/agents/${createRes.body.data.id}`)
         .send({ lastName: '' })
         .expect(400);
 
-      expect(res.body.errors).toContainEqual(
-        expect.objectContaining({ field: 'lastName' })
-      );
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
     });
 
     it('should return 400 for empty email on update', async () => {
@@ -340,13 +354,12 @@ describe('Agent API', () => {
         .send(validAgent);
 
       const res = await request(app)
-        .put(`/api/agents/${createRes.body.id}`)
+        .put(`/api/agents/${createRes.body.data.id}`)
         .send({ email: '' })
         .expect(400);
 
-      expect(res.body.errors).toContainEqual(
-        expect.objectContaining({ field: 'email' })
-      );
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
     });
 
     it('should return 400 for empty mobileNumber on update', async () => {
@@ -355,13 +368,12 @@ describe('Agent API', () => {
         .send(validAgent);
 
       const res = await request(app)
-        .put(`/api/agents/${createRes.body.id}`)
+        .put(`/api/agents/${createRes.body.data.id}`)
         .send({ mobileNumber: '' })
         .expect(400);
 
-      expect(res.body.errors).toContainEqual(
-        expect.objectContaining({ field: 'mobileNumber' })
-      );
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
     });
 
     it('should return 400 for invalid mobileNumber on update', async () => {
@@ -370,13 +382,12 @@ describe('Agent API', () => {
         .send(validAgent);
 
       const res = await request(app)
-        .put(`/api/agents/${createRes.body.id}`)
+        .put(`/api/agents/${createRes.body.data.id}`)
         .send({ mobileNumber: '123' })
         .expect(400);
 
-      expect(res.body.errors).toContainEqual(
-        expect.objectContaining({ field: 'mobileNumber' })
-      );
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
     });
 
     it('should update lastName only', async () => {
@@ -385,12 +396,13 @@ describe('Agent API', () => {
         .send(validAgent);
 
       const res = await request(app)
-        .put(`/api/agents/${createRes.body.id}`)
+        .put(`/api/agents/${createRes.body.data.id}`)
         .send({ lastName: 'Doe' })
         .expect(200);
 
-      expect(res.body.lastName).toBe('Doe');
-      expect(res.body.firstName).toBe('John');
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.lastName).toBe('Doe');
+      expect(res.body.data.firstName).toBe('John');
     });
 
     it('should update email only', async () => {
@@ -399,11 +411,12 @@ describe('Agent API', () => {
         .send(validAgent);
 
       const res = await request(app)
-        .put(`/api/agents/${createRes.body.id}`)
+        .put(`/api/agents/${createRes.body.data.id}`)
         .send({ email: 'newemail@example.com' })
         .expect(200);
 
-      expect(res.body.email).toBe('newemail@example.com');
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.email).toBe('newemail@example.com');
     });
 
     it('should update mobileNumber only', async () => {
@@ -412,11 +425,12 @@ describe('Agent API', () => {
         .send(validAgent);
 
       const res = await request(app)
-        .put(`/api/agents/${createRes.body.id}`)
+        .put(`/api/agents/${createRes.body.data.id}`)
         .send({ mobileNumber: '+1-555-999-8888' })
         .expect(200);
 
-      expect(res.body.mobileNumber).toBe('+1-555-999-8888');
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.mobileNumber).toBe('+1-555-999-8888');
     });
   });
 
@@ -426,13 +440,16 @@ describe('Agent API', () => {
         .post('/api/agents')
         .send(validAgent);
 
-      await request(app)
-        .delete(`/api/agents/${createRes.body.id}`)
-        .expect(204);
+      const deleteRes = await request(app)
+        .delete(`/api/agents/${createRes.body.data.id}`)
+        .expect(200);
+
+      expect(deleteRes.body.success).toBe(true);
+      expect(deleteRes.body.message).toBe('Property Agent successfully deleted');
 
       // Verify agent is deleted
       await request(app)
-        .get(`/api/agents/${createRes.body.id}`)
+        .get(`/api/agents/${createRes.body.data.id}`)
         .expect(404);
     });
 
@@ -441,7 +458,8 @@ describe('Agent API', () => {
         .delete('/api/agents/non-existent-id')
         .expect(404);
 
-      expect(res.body.error).toBe('Agent not found');
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('AGENT_NOT_FOUND');
     });
   });
 

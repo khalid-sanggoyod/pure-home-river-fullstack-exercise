@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { watch } from 'vue';
+import { watch, ref } from 'vue';
 import { useAgentForm } from '../composables/useAgentForm';
 import { useAgentStore } from '../store/agentStore';
 
@@ -13,22 +13,26 @@ const {
   isEditing,
   resetForm,
   getFieldError,
-  setErrors,
   validateForm,
   getFormData,
 } = useAgentForm(() => store.editingAgent);
 
-// Watch for server-side validation errors from the store
+// Server-side error message
+const serverError = ref('');
+
+// Watch for server-side errors from the store
 watch(
-  () => store.validationErrors,
-  (errors) => {
-    if (errors.length > 0) {
-      setErrors(errors);
+  () => store.errorMessage,
+  (message) => {
+    if (message && store.errorCode === 'VALIDATION_ERROR') {
+      serverError.value = message;
     }
   }
 );
 
 async function handleSubmit() {
+  serverError.value = '';
+
   if (!validateForm()) {
     return;
   }
@@ -36,20 +40,27 @@ async function handleSubmit() {
   const success = await store.saveAgent(getFormData());
   if (success) {
     resetForm();
+    serverError.value = '';
   }
 }
 
 function handleCancel() {
   resetForm();
+  serverError.value = '';
   store.cancelEditing();
 }
 
-defineExpose({ resetForm, setErrors });
+defineExpose({ resetForm });
 </script>
 
 <template>
   <div class="agent-form">
     <h2>{{ isEditing ? 'Edit Agent' : 'Add New Agent' }}</h2>
+
+    <div v-if="serverError" class="server-error">
+      {{ serverError }}
+    </div>
+
     <form @submit.prevent="handleSubmit">
       <div class="form-group">
         <label for="firstName">First Name</label>
@@ -131,6 +142,16 @@ defineExpose({ resetForm, setErrors });
 h2 {
   margin-bottom: 1rem;
   color: #2c3e50;
+}
+
+.server-error {
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
 }
 
 .form-group {

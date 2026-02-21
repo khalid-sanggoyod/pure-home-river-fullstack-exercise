@@ -3,25 +3,31 @@ import { ref, onMounted } from 'vue';
 import AgentForm from './components/AgentForm.vue';
 import AgentList from './components/AgentList.vue';
 import { agentApi, ApiError } from './services/api';
-import type { Agent, CreateAgentInput } from './types/agent';
+import type { Agent, CreateAgentInput, AgentSearchParams } from './types/agent';
 
 const agents = ref<Agent[]>([]);
 const loading = ref(true);
 const editingAgent = ref<Agent | null>(null);
 const formRef = ref<InstanceType<typeof AgentForm> | null>(null);
 const errorMessage = ref('');
+const currentSearchParams = ref<AgentSearchParams>({});
 
-async function fetchAgents() {
+async function fetchAgents(params?: AgentSearchParams) {
   loading.value = true;
   errorMessage.value = '';
   try {
-    agents.value = await agentApi.getAll();
+    agents.value = await agentApi.getAll(params);
   } catch (error) {
     errorMessage.value = 'Failed to load agents. Please try again.';
     console.error('Failed to fetch agents:', error);
   } finally {
     loading.value = false;
   }
+}
+
+async function handleSearch(params: AgentSearchParams) {
+  currentSearchParams.value = params;
+  await fetchAgents(params);
 }
 
 async function handleSubmit(data: CreateAgentInput) {
@@ -34,7 +40,7 @@ async function handleSubmit(data: CreateAgentInput) {
     }
     editingAgent.value = null;
     formRef.value?.resetForm();
-    await fetchAgents();
+    await fetchAgents(currentSearchParams.value);
   } catch (error) {
     if (error instanceof ApiError && error.data.errors) {
       formRef.value?.setErrors(error.data.errors);
@@ -58,7 +64,7 @@ async function handleDelete(agent: Agent) {
   errorMessage.value = '';
   try {
     await agentApi.delete(agent.id);
-    await fetchAgents();
+    await fetchAgents(currentSearchParams.value);
   } catch (error) {
     errorMessage.value = 'Failed to delete agent. Please try again.';
     console.error('Failed to delete agent:', error);
@@ -69,7 +75,7 @@ function handleCancel() {
   editingAgent.value = null;
 }
 
-onMounted(fetchAgents);
+onMounted(() => fetchAgents());
 </script>
 
 <template>
@@ -97,6 +103,7 @@ onMounted(fetchAgents);
         :loading="loading"
         @edit="handleEdit"
         @delete="handleDelete"
+        @search="handleSearch"
       />
     </main>
 

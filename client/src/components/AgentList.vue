@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { Agent } from '../types/agent';
+import { ref, watch } from 'vue';
+import type { Agent, AgentSearchParams } from '../types/agent';
 
 defineProps<{
   agents: Agent[];
@@ -9,7 +10,37 @@ defineProps<{
 const emit = defineEmits<{
   edit: [agent: Agent];
   delete: [agent: Agent];
+  search: [params: AgentSearchParams];
 }>();
+
+const searchText = ref('');
+const createdFrom = ref('');
+const createdTo = ref('');
+const showFilters = ref(false);
+
+let debounceTimer: ReturnType<typeof setTimeout>;
+
+function emitSearch() {
+  emit('search', {
+    search: searchText.value || undefined,
+    createdFrom: createdFrom.value || undefined,
+    createdTo: createdTo.value || undefined,
+  });
+}
+
+function handleSearchInput() {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(emitSearch, 300);
+}
+
+function clearFilters() {
+  searchText.value = '';
+  createdFrom.value = '';
+  createdTo.value = '';
+  emitSearch();
+}
+
+watch([createdFrom, createdTo], emitSearch);
 
 function formatDate(dateString: string): string {
   return new Date(dateString).toLocaleDateString('en-US', {
@@ -22,12 +53,44 @@ function formatDate(dateString: string): string {
 
 <template>
   <div class="agent-list">
-    <h2>Property Agents</h2>
+    <div class="list-header">
+      <h2>Property Agents</h2>
+      <button class="btn btn-filter" @click="showFilters = !showFilters">
+        {{ showFilters ? 'Hide Filters' : 'Show Filters' }}
+      </button>
+    </div>
+
+    <!-- Search and Filters -->
+    <div class="search-section">
+      <div class="search-box">
+        <input
+          v-model="searchText"
+          type="text"
+          placeholder="Search by name, email, or phone..."
+          @input="handleSearchInput"
+        />
+        <button v-if="searchText" class="clear-btn" @click="searchText = ''; emitSearch()">x</button>
+      </div>
+
+      <div v-if="showFilters" class="filters">
+        <div class="filter-row">
+          <div class="filter-group">
+            <label>Created From</label>
+            <input v-model="createdFrom" type="date" />
+          </div>
+          <div class="filter-group">
+            <label>Created To</label>
+            <input v-model="createdTo" type="date" />
+          </div>
+        </div>
+        <button class="btn btn-clear" @click="clearFilters">Clear All Filters</button>
+      </div>
+    </div>
 
     <div v-if="loading" class="loading">Loading agents...</div>
 
     <div v-else-if="agents.length === 0" class="empty-state">
-      <p>No agents found. Add your first agent using the form above.</p>
+      <p>No agents found.</p>
     </div>
 
     <table v-else>
@@ -55,6 +118,10 @@ function formatDate(dateString: string): string {
         </tr>
       </tbody>
     </table>
+
+    <div v-if="!loading && agents.length > 0" class="results-count">
+      Showing {{ agents.length }} agent(s)
+    </div>
   </div>
 </template>
 
@@ -66,9 +133,119 @@ function formatDate(dateString: string): string {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-h2 {
+.list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 1rem;
+}
+
+h2 {
+  margin: 0;
   color: #2c3e50;
+}
+
+.search-section {
+  margin-bottom: 1rem;
+}
+
+.search-box {
+  position: relative;
+  margin-bottom: 0.75rem;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 0.75rem 2.5rem 0.75rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.search-box input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.clear-btn {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #6b7280;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.filters {
+  background: #f9fafb;
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+
+.filter-row {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.filter-group {
+  flex: 1;
+  min-width: 150px;
+}
+
+.filter-group label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.25rem;
+}
+
+.filter-group input,
+.filter-group select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.btn-filter {
+  background: #6366f1;
+  color: white;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.btn-filter:hover {
+  background: #4f46e5;
+}
+
+.btn-clear {
+  background: #6b7280;
+  color: white;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.btn-clear:hover {
+  background: #4b5563;
 }
 
 .loading,
@@ -139,5 +316,14 @@ a:hover {
 
 .btn-delete:hover {
   background-color: #dc2626;
+}
+
+.results-count {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e5e7eb;
+  font-size: 0.875rem;
+  color: #6b7280;
+  text-align: right;
 }
 </style>

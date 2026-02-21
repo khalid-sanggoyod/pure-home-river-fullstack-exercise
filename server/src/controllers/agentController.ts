@@ -1,8 +1,21 @@
 import { Request, Response } from 'express';
 import { agentRepository } from '../repositories/agentRepository';
+import { AgentSearchParams } from '../models/agent';
 
 export const getAll = (req: Request, res: Response) => {
-  const agents = agentRepository.getAll();
+  const searchParams: AgentSearchParams = {
+    search: req.query.search as string | undefined,
+    createdFrom: req.query.createdFrom as string | undefined,
+    createdTo: req.query.createdTo as string | undefined,
+  };
+
+  // Check if any search params are provided
+  const hasSearchParams = Object.values(searchParams).some(v => v !== undefined);
+
+  const agents = hasSearchParams
+    ? agentRepository.search(searchParams)
+    : agentRepository.getAll();
+
   res.json(agents);
 };
 

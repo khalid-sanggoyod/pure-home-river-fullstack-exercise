@@ -22,6 +22,12 @@ export interface UpdateAgentInput {
   mobileNumber?: string;
 }
 
+export interface AgentSearchParams {
+  search?: string;
+  createdFrom?: string;
+  createdTo?: string;
+}
+
 export interface ValidationError {
   field: string;
   message: string;

@@ -1,11 +1,40 @@
 import { v4 as uuidv4 } from 'uuid';
-import { Agent, CreateAgentInput, UpdateAgentInput } from '../models/agent';
+import { Agent, CreateAgentInput, UpdateAgentInput, AgentSearchParams } from '../models/agent';
 
 class AgentRepository {
   private agents: Map<string, Agent> = new Map();
 
   getAll(): Agent[] {
     return Array.from(this.agents.values());
+  }
+
+  search(params: AgentSearchParams): Agent[] {
+    let results = Array.from(this.agents.values());
+
+    // Text search (name, email, phone)
+    if (params.search) {
+      const searchLower = params.search.toLowerCase();
+      results = results.filter(agent =>
+        agent.firstName.toLowerCase().includes(searchLower) ||
+        agent.lastName.toLowerCase().includes(searchLower) ||
+        agent.email.toLowerCase().includes(searchLower) ||
+        agent.mobileNumber.includes(params.search!)
+      );
+    }
+
+    // Date range filter
+    if (params.createdFrom) {
+      const fromDate = new Date(params.createdFrom);
+      results = results.filter(agent => new Date(agent.createdAt) >= fromDate);
+    }
+
+    if (params.createdTo) {
+      const toDate = new Date(params.createdTo);
+      toDate.setHours(23, 59, 59, 999); // Include the entire day
+      results = results.filter(agent => new Date(agent.createdAt) <= toDate);
+    }
+
+    return results;
   }
 
   getById(id: string): Agent | undefined {

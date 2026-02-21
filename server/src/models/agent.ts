@@ -21,3 +21,9 @@ export interface UpdateAgentInput {
   email?: string;
   mobileNumber?: string;
 }
+
+export interface AgentSearchParams {
+  search?: string;
+  createdFrom?: string;
+  createdTo?: string;
+}

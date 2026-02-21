@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import type { Agent, AgentSearchParams } from '../types/agent';
+import type { Agent, AgentSearchParams, PaginationInfo } from '../types/agent';
 
-defineProps<{
+const props = defineProps<{
   agents: Agent[];
   loading: boolean;
+  pagination?: PaginationInfo;
 }>();
 
 const emit = defineEmits<{
   edit: [agent: Agent];
   delete: [agent: Agent];
   search: [params: AgentSearchParams];
+  pageChange: [page: number];
 }>();
 
 const searchText = ref('');
@@ -38,6 +40,12 @@ function clearFilters() {
   createdFrom.value = '';
   createdTo.value = '';
   emitSearch();
+}
+
+function goToPage(page: number) {
+  if (props.pagination && page >= 1 && page <= props.pagination.totalPages) {
+    emit('pageChange', page);
+  }
 }
 
 watch([createdFrom, createdTo], emitSearch);
@@ -93,35 +101,71 @@ function formatDate(dateString: string): string {
       <p>No agents found.</p>
     </div>
 
-    <table v-else>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Email</th>
-          <th>Mobile</th>
-          <th>Created</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="agent in agents" :key="agent.id">
-          <td>{{ agent.firstName }} {{ agent.lastName }}</td>
-          <td>
-            <a :href="`mailto:${agent.email}`">{{ agent.email }}</a>
-          </td>
-          <td>{{ agent.mobileNumber }}</td>
-          <td>{{ formatDate(agent.createdAt) }}</td>
-          <td class="actions">
-            <button class="btn btn-edit" @click="emit('edit', agent)">Edit</button>
-            <button class="btn btn-delete" @click="emit('delete', agent)">Delete</button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <template v-else>
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Mobile</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="agent in agents" :key="agent.id">
+            <td>{{ agent.firstName }} {{ agent.lastName }}</td>
+            <td>
+              <a :href="`mailto:${agent.email}`">{{ agent.email }}</a>
+            </td>
+            <td>{{ agent.mobileNumber }}</td>
+            <td>{{ formatDate(agent.createdAt) }}</td>
+            <td class="actions">
+              <button class="btn btn-edit" @click="emit('edit', agent)">Edit</button>
+              <button class="btn btn-delete" @click="emit('delete', agent)">Delete</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
-    <div v-if="!loading && agents.length > 0" class="results-count">
-      Showing {{ agents.length }} agent(s)
-    </div>
+      <!-- Pagination -->
+      <div v-if="pagination && pagination.totalPages > 1" class="pagination">
+        <button
+          class="btn btn-page"
+          :disabled="pagination.page <= 1"
+          @click="goToPage(pagination.page - 1)"
+        >
+          Previous
+        </button>
+
+        <div class="page-numbers">
+          <button
+            v-for="pageNum in pagination.totalPages"
+            :key="pageNum"
+            class="btn btn-page"
+            :class="{ active: pageNum === pagination.page }"
+            @click="goToPage(pageNum)"
+          >
+            {{ pageNum }}
+          </button>
+        </div>
+
+        <button
+          class="btn btn-page"
+          :disabled="pagination.page >= pagination.totalPages"
+          @click="goToPage(pagination.page + 1)"
+        >
+          Next
+        </button>
+      </div>
+
+      <div class="results-count">
+        Showing {{ agents.length }} of {{ pagination?.total || agents.length }} agent(s)
+        <span v-if="pagination && pagination.totalPages > 1">
+          (Page {{ pagination.page }} of {{ pagination.totalPages }})
+        </span>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -211,8 +255,7 @@ h2 {
   margin-bottom: 0.25rem;
 }
 
-.filter-group input,
-.filter-group select {
+.filter-group input {
   width: 100%;
   padding: 0.5rem;
   border: 1px solid #d1d5db;
@@ -318,12 +361,48 @@ a:hover {
   background-color: #dc2626;
 }
 
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.page-numbers {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.btn-page {
+  background: #f3f4f6;
+  color: #374151;
+  padding: 0.5rem 0.75rem;
+  min-width: 40px;
+}
+
+.btn-page:hover:not(:disabled) {
+  background: #e5e7eb;
+}
+
+.btn-page:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-page.active {
+  background: #3b82f6;
+  color: white;
+}
+
 .results-count {
   margin-top: 1rem;
   padding-top: 0.75rem;
   border-top: 1px solid #e5e7eb;
   font-size: 0.875rem;
   color: #6b7280;
-  text-align: right;
+  text-align: center;
 }
 </style>

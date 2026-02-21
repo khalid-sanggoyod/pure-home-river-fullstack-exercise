@@ -3,9 +3,10 @@ import { ref, onMounted } from 'vue';
 import AgentForm from './components/AgentForm.vue';
 import AgentList from './components/AgentList.vue';
 import { agentApi, ApiError } from './services/api';
-import type { Agent, CreateAgentInput, AgentSearchParams } from './types/agent';
+import type { Agent, CreateAgentInput, AgentSearchParams, PaginationInfo } from './types/agent';
 
 const agents = ref<Agent[]>([]);
+const pagination = ref<PaginationInfo | undefined>();
 const loading = ref(true);
 const editingAgent = ref<Agent | null>(null);
 const formRef = ref<InstanceType<typeof AgentForm> | null>(null);
@@ -16,7 +17,9 @@ async function fetchAgents(params?: AgentSearchParams) {
   loading.value = true;
   errorMessage.value = '';
   try {
-    agents.value = await agentApi.getAll(params);
+    const result = await agentApi.getAll(params);
+    agents.value = result.data;
+    pagination.value = result.pagination;
   } catch (error) {
     errorMessage.value = 'Failed to load agents. Please try again.';
     console.error('Failed to fetch agents:', error);
@@ -26,8 +29,13 @@ async function fetchAgents(params?: AgentSearchParams) {
 }
 
 async function handleSearch(params: AgentSearchParams) {
-  currentSearchParams.value = params;
-  await fetchAgents(params);
+  currentSearchParams.value = { ...params, page: 1 };
+  await fetchAgents(currentSearchParams.value);
+}
+
+async function handlePageChange(page: number) {
+  currentSearchParams.value = { ...currentSearchParams.value, page };
+  await fetchAgents(currentSearchParams.value);
 }
 
 async function handleSubmit(data: CreateAgentInput) {
@@ -101,9 +109,11 @@ onMounted(() => fetchAgents());
       <AgentList
         :agents="agents"
         :loading="loading"
+        :pagination="pagination"
         @edit="handleEdit"
         @delete="handleDelete"
         @search="handleSearch"
+        @page-change="handlePageChange"
       />
     </main>
 

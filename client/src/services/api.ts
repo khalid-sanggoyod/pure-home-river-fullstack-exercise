@@ -1,4 +1,4 @@
-import type { Agent, CreateAgentInput, UpdateAgentInput, AgentSearchParams, ApiErrorResponse } from '../types/agent';
+import type { Agent, CreateAgentInput, UpdateAgentInput, AgentSearchParams, PaginatedResult, ApiErrorResponse } from '../types/agent';
 
 const API_BASE = '/api';
 
@@ -25,11 +25,11 @@ async function handleResponse<T>(response: Response): Promise<T> {
   return response.json();
 }
 
-function buildQueryString(params: Record<string, string | undefined>): string {
+function buildQueryString(params: Record<string, string | number | undefined>): string {
   const searchParams = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== '') {
-      searchParams.append(key, value);
+      searchParams.append(key, String(value));
     }
   });
   const queryString = searchParams.toString();
@@ -37,10 +37,10 @@ function buildQueryString(params: Record<string, string | undefined>): string {
 }
 
 export const agentApi = {
-  async getAll(params?: AgentSearchParams): Promise<Agent[]> {
-    const query = params ? buildQueryString(params as Record<string, string | undefined>) : '';
+  async getAll(params?: AgentSearchParams): Promise<PaginatedResult<Agent>> {
+    const query = params ? buildQueryString(params as Record<string, string | number | undefined>) : '';
     const response = await fetch(`${API_BASE}/agents${query}`);
-    return handleResponse<Agent[]>(response);
+    return handleResponse<PaginatedResult<Agent>>(response);
   },
 
   async getById(id: string): Promise<Agent> {

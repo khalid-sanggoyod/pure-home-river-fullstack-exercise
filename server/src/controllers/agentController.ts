@@ -3,20 +3,19 @@ import { agentRepository } from '../repositories/agentRepository';
 import { AgentSearchParams } from '../models/agent';
 
 export const getAll = (req: Request, res: Response) => {
+  const page = req.query.page ? parseInt(req.query.page as string, 10) : undefined;
+  const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+
   const searchParams: AgentSearchParams = {
     search: req.query.search as string | undefined,
     createdFrom: req.query.createdFrom as string | undefined,
     createdTo: req.query.createdTo as string | undefined,
+    page: page && page > 0 ? page : undefined,
+    limit: limit && limit > 0 ? limit : undefined,
   };
 
-  // Check if any search params are provided
-  const hasSearchParams = Object.values(searchParams).some(v => v !== undefined);
-
-  const agents = hasSearchParams
-    ? agentRepository.search(searchParams)
-    : agentRepository.getAll();
-
-  res.json(agents);
+  const result = agentRepository.search(searchParams);
+  res.json(result);
 };
 
 export const getById = (req: Request, res: Response) => {

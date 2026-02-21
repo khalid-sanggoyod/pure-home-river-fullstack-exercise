@@ -1,5 +1,8 @@
 import { v4 as uuidv4 } from 'uuid';
-import { Agent, CreateAgentInput, UpdateAgentInput, AgentSearchParams } from '../models/agent';
+import { Agent, CreateAgentInput, UpdateAgentInput, AgentSearchParams, PaginatedResult } from '../models/agent';
+
+const DEFAULT_PAGE = 1;
+const DEFAULT_LIMIT = 2;
 
 class AgentRepository {
   private agents: Map<string, Agent> = new Map();
@@ -8,7 +11,7 @@ class AgentRepository {
     return Array.from(this.agents.values());
   }
 
-  search(params: AgentSearchParams): Agent[] {
+  search(params: AgentSearchParams): PaginatedResult<Agent> {
     let results = Array.from(this.agents.values());
 
     // Text search (name, email, phone)
@@ -30,11 +33,31 @@ class AgentRepository {
 
     if (params.createdTo) {
       const toDate = new Date(params.createdTo);
-      toDate.setHours(23, 59, 59, 999); // Include the entire day
+      toDate.setHours(23, 59, 59, 999);
       results = results.filter(agent => new Date(agent.createdAt) <= toDate);
     }
 
-    return results;
+    // Sort by createdAt descending (newest first)
+    results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    // Pagination
+    const total = results.length;
+    const page = params.page || DEFAULT_PAGE;
+    const limit = params.limit || DEFAULT_LIMIT;
+    const totalPages = Math.ceil(total / limit);
+    const offset = (page - 1) * limit;
+
+    const paginatedData = results.slice(offset, offset + limit);
+
+    return {
+      data: paginatedData,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
+    };
   }
 
   getById(id: string): Agent | undefined {

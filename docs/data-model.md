@@ -1,56 +1,139 @@
 # PURE Home River Data Model
 
-## Entity Relationship Diagram
+## Entities
+
+### 1. PropertyAgent
+
+| Column | Type | Constraints |
+|--------|------|-------------|
+| id | UUID | PRIMARY KEY |
+| first_name | VARCHAR(100) | NOT NULL |
+| last_name | VARCHAR(100) | NOT NULL |
+| email | VARCHAR(255) | NOT NULL, UNIQUE |
+| mobile_number | VARCHAR(20) | NOT NULL |
+| created_at | TIMESTAMP | NOT NULL, DEFAULT NOW() |
+| updated_at | TIMESTAMP | NOT NULL, DEFAULT NOW() |
+
+---
+
+### 2. Property
+
+| Column | Type | Constraints |
+|--------|------|-------------|
+| id | UUID | PRIMARY KEY |
+| address | VARCHAR(500) | NOT NULL |
+| agent_id | UUID | NOT NULL, FOREIGN KEY → PropertyAgent(id) |
+| created_at | TIMESTAMP | NOT NULL, DEFAULT NOW() |
+| updated_at | TIMESTAMP | NOT NULL, DEFAULT NOW() |
+
+---
+
+### 3. Family
+
+| Column | Type | Constraints |
+|--------|------|-------------|
+| id | UUID | PRIMARY KEY |
+| name | VARCHAR(200) | NOT NULL |
+| property_id | UUID | NOT NULL, UNIQUE, FOREIGN KEY → Property(id) |
+| created_at | TIMESTAMP | NOT NULL, DEFAULT NOW() |
+| updated_at | TIMESTAMP | NOT NULL, DEFAULT NOW() |
+
+---
+
+### 4. Tenant
+
+| Column | Type | Constraints |
+|--------|------|-------------|
+| id | UUID | PRIMARY KEY |
+| first_name | VARCHAR(100) | NOT NULL |
+| last_name | VARCHAR(100) | NOT NULL |
+| email | VARCHAR(255) | NULL |
+| phone | VARCHAR(20) | NULL |
+| family_id | UUID | NOT NULL, FOREIGN KEY → Family(id) |
+| created_at | TIMESTAMP | NOT NULL, DEFAULT NOW() |
+| updated_at | TIMESTAMP | NOT NULL, DEFAULT NOW() |
+
+---
+
+### 5. Note
+
+| Column | Type | Constraints |
+|--------|------|-------------|
+| id | UUID | PRIMARY KEY |
+| title | VARCHAR(200) | NOT NULL |
+| content | TEXT | NULL |
+| agent_id | UUID | NOT NULL, FOREIGN KEY → PropertyAgent(id) |
+| property_id | UUID | NULL, FOREIGN KEY → Property(id) |
+| due_date | TIMESTAMP | NULL |
+| is_reminder | BOOLEAN | NOT NULL, DEFAULT FALSE |
+| created_at | TIMESTAMP | NOT NULL, DEFAULT NOW() |
+| updated_at | TIMESTAMP | NOT NULL, DEFAULT NOW() |
+
+---
+
+## Relationships
+
+| Relationship | Cardinality | Description |
+|--------------|-------------|-------------|
+| PropertyAgent → Property | 1:N | One agent manages many properties |
+| Property → Family | 1:1 | Each property houses one family |
+| Family → Tenant | 1:N | One family has many tenants |
+| PropertyAgent → Note | 1:N | One agent creates many notes |
+| Property → Note | 1:N | One property can have many notes (optional) |
+
+---
+
+## ERD Diagram
 
 ```mermaid
 erDiagram
     PropertyAgent {
-        string id PK
-        string firstName
-        string lastName
-        string email
-        string mobileNumber
-        datetime createdAt
-        datetime updatedAt
+        UUID id PK
+        VARCHAR first_name
+        VARCHAR last_name
+        VARCHAR email UK
+        VARCHAR mobile_number
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
     }
 
     Property {
-        string id PK
-        string address
-        string agentId FK
-        datetime createdAt
-        datetime updatedAt
+        UUID id PK
+        VARCHAR address
+        UUID agent_id FK
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
     }
 
     Family {
-        string id PK
-        string name
-        string propertyId FK
-        datetime createdAt
-        datetime updatedAt
+        UUID id PK
+        VARCHAR name
+        UUID property_id FK,UK
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
     }
 
     Tenant {
-        string id PK
-        string firstName
-        string lastName
-        string email
-        string phone
-        string familyId FK
-        datetime createdAt
-        datetime updatedAt
+        UUID id PK
+        VARCHAR first_name
+        VARCHAR last_name
+        VARCHAR email
+        VARCHAR phone
+        UUID family_id FK
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
     }
 
     Note {
-        string id PK
-        string title
-        string content
-        string propertyId FK
-        string agentId FK
-        datetime dueDate
-        boolean isReminder
-        datetime createdAt
-        datetime updatedAt
+        UUID id PK
+        VARCHAR title
+        TEXT content
+        UUID agent_id FK
+        UUID property_id FK
+        TIMESTAMP due_date
+        BOOLEAN is_reminder
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
     }
 
     PropertyAgent ||--o{ Property : "manages"
@@ -60,76 +143,10 @@ erDiagram
     Family ||--o{ Tenant : "includes"
 ```
 
-## Entity Descriptions
+---
 
-### PropertyAgent
-Represents a property management agent who manages properties and creates notes.
+## Key Design Notes
 
-| Field | Type | Description |
-|-------|------|-------------|
-| id | string | Unique identifier (UUID) |
-| firstName | string | Agent's first name |
-| lastName | string | Agent's last name |
-| email | string | Agent's email address |
-| mobileNumber | string | Agent's mobile phone number |
-| createdAt | datetime | Record creation timestamp |
-| updatedAt | datetime | Record last update timestamp |
-
-### Property
-Represents a rental property managed by an agent.
-
-| Field | Type | Description |
-|-------|------|-------------|
-| id | string | Unique identifier (UUID) |
-| address | string | Property street address |
-| agentId | string | Foreign key to PropertyAgent |
-| createdAt | datetime | Record creation timestamp |
-| updatedAt | datetime | Record last update timestamp |
-
-### Family
-Represents a family unit residing at a property.
-
-| Field | Type | Description |
-|-------|------|-------------|
-| id | string | Unique identifier (UUID) |
-| name | string | Family name/identifier |
-| propertyId | string | Foreign key to Property |
-| createdAt | datetime | Record creation timestamp |
-| updatedAt | datetime | Record last update timestamp |
-
-### Tenant
-Represents an individual tenant who is part of a family.
-
-| Field | Type | Description |
-|-------|------|-------------|
-| id | string | Unique identifier (UUID) |
-| firstName | string | Tenant's first name |
-| lastName | string | Tenant's last name |
-| email | string | Tenant's email address |
-| phone | string | Tenant's phone number |
-| familyId | string | Foreign key to Family |
-| createdAt | datetime | Record creation timestamp |
-| updatedAt | datetime | Record last update timestamp |
-
-### Note
-Represents a note or reminder associated with a property and agent.
-
-| Field | Type | Description |
-|-------|------|-------------|
-| id | string | Unique identifier (UUID) |
-| title | string | Note title |
-| content | string | Note content/body |
-| propertyId | string | Foreign key to Property |
-| agentId | string | Foreign key to PropertyAgent |
-| dueDate | datetime | Due date for reminders |
-| isReminder | boolean | Whether this note is a reminder |
-| createdAt | datetime | Record creation timestamp |
-| updatedAt | datetime | Record last update timestamp |
-
-## Relationships
-
-1. **PropertyAgent 1:N Properties** - One agent can manage multiple properties
-2. **Property 1:1 Family** - Each property houses one family at a time
-3. **Family 1:N Tenants** - A family can have multiple tenant members
-4. **PropertyAgent 1:N Notes** - An agent can create multiple notes
-5. **Property 1:N Notes** - A property can have multiple notes attached
+1. **Family ↔ Property**: The `UNIQUE` constraint on `Family.property_id` enforces one family per property
+2. **Note.property_id**: Nullable to allow agent notes not tied to any specific property
+3. **Note.is_reminder**: Boolean flag to distinguish reminders (with due dates) from regular notes

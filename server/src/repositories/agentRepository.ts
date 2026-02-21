@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { Agent, CreateAgentInput, UpdateAgentInput } from '../models/agent';
 
-class AgentStore {
+class AgentRepository {
   private agents: Map<string, Agent> = new Map();
 
   getAll(): Agent[] {
@@ -51,4 +51,4 @@ class AgentStore {
   }
 }
 
-export const agentStore = new AgentStore();
+export const agentRepository = new AgentRepository();

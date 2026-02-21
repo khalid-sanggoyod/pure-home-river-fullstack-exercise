@@ -61,7 +61,8 @@ A full-stack application for managing property agents with TypeScript REST API a
 │       └── types/          # TypeScript types
 └── docs/                   # Documentation
     ├── data-model.md       # ERD and schema
-    └── api-examples.md     # curl examples
+    ├── api-examples.md     # curl examples
+    └── pure-home-river-api.postman_collection.json  # Postman collection
 ```
 
 ---
@@ -242,6 +243,7 @@ See [docs/api-examples.md](docs/api-examples.md) for more detailed examples.
 
 - [Data Model & ERD](docs/data-model.md)
 - [API Examples](docs/api-examples.md)
+- [Postman Collection](docs/pure-home-river-api.postman_collection.json) - Import into Postman for API testing
 
 ---
 

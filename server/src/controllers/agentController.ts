@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { agentRepository } from '../repositories/agentRepository';
 
-export const getAll = (req: Request, res: Response) => {
+export const getAll = (_req: Request, res: Response) => {
   const agents = agentRepository.getAll();
   res.json(agents);
 };

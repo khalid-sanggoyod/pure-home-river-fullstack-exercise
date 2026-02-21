@@ -101,6 +101,11 @@ class AgentRepository {
   delete(id: string): boolean {
     return this.agents.delete(id);
   }
+
+  // For testing purposes
+  reset(): void {
+    this.agents.clear();
+  }
 }
 
 export const agentRepository = new AgentRepository();

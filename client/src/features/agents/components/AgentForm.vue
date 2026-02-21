@@ -1,99 +1,50 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
-import type { Agent, CreateAgentInput, ValidationError } from '../types/agent';
+import { watch } from 'vue';
+import { useAgentForm } from '../composables/useAgentForm';
+import { useAgentStore } from '../store/agentStore';
 
-const props = defineProps<{
-  agent?: Agent | null;
-}>();
+const store = useAgentStore();
 
-const emit = defineEmits<{
-  submit: [data: CreateAgentInput];
-  cancel: [];
-}>();
+const {
+  firstName,
+  lastName,
+  email,
+  mobileNumber,
+  isEditing,
+  resetForm,
+  getFieldError,
+  setErrors,
+  validateForm,
+  getFormData,
+} = useAgentForm(() => store.editingAgent);
 
-const firstName = ref('');
-const lastName = ref('');
-const email = ref('');
-const mobileNumber = ref('');
-const errors = ref<ValidationError[]>([]);
-
-const isEditing = computed(() => !!props.agent);
-
+// Watch for server-side validation errors from the store
 watch(
-  () => props.agent,
-  (newAgent) => {
-    if (newAgent) {
-      firstName.value = newAgent.firstName;
-      lastName.value = newAgent.lastName;
-      email.value = newAgent.email;
-      mobileNumber.value = newAgent.mobileNumber;
-    } else {
-      resetForm();
+  () => store.validationErrors,
+  (errors) => {
+    if (errors.length > 0) {
+      setErrors(errors);
     }
-  },
-  { immediate: true }
+  }
 );
 
-function resetForm() {
-  firstName.value = '';
-  lastName.value = '';
-  email.value = '';
-  mobileNumber.value = '';
-  errors.value = [];
-}
-
-function getFieldError(field: string): string | undefined {
-  return errors.value.find((e) => e.field === field)?.message;
-}
-
-function validateForm(): boolean {
-  errors.value = [];
-
-  if (!firstName.value.trim()) {
-    errors.value.push({ field: 'firstName', message: 'First name is required' });
-  }
-
-  if (!lastName.value.trim()) {
-    errors.value.push({ field: 'lastName', message: 'Last name is required' });
-  }
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!email.value.trim()) {
-    errors.value.push({ field: 'email', message: 'Email is required' });
-  } else if (!emailRegex.test(email.value)) {
-    errors.value.push({ field: 'email', message: 'Please enter a valid email address' });
-  }
-
-  const phoneRegex = /^[\d\s\-+()]+$/;
-  const digitsOnly = mobileNumber.value.replace(/[\s\-+()]/g, '');
-  if (!mobileNumber.value.trim()) {
-    errors.value.push({ field: 'mobileNumber', message: 'Mobile number is required' });
-  } else if (!phoneRegex.test(mobileNumber.value) || digitsOnly.length < 7 || digitsOnly.length > 15) {
-    errors.value.push({ field: 'mobileNumber', message: 'Please enter a valid phone number (7-15 digits)' });
-  }
-
-  return errors.value.length === 0;
-}
-
-function handleSubmit() {
+async function handleSubmit() {
   if (!validateForm()) {
     return;
   }
 
-  emit('submit', {
-    firstName: firstName.value.trim(),
-    lastName: lastName.value.trim(),
-    email: email.value.trim().toLowerCase(),
-    mobileNumber: mobileNumber.value.trim(),
-  });
+  const success = await store.saveAgent(getFormData());
+  if (success) {
+    resetForm();
+  }
 }
 
 function handleCancel() {
   resetForm();
-  emit('cancel');
+  store.cancelEditing();
 }
 
-defineExpose({ resetForm, setErrors: (errs: ValidationError[]) => (errors.value = errs) });
+defineExpose({ resetForm, setErrors });
 </script>
 
 <template>
@@ -157,8 +108,8 @@ defineExpose({ resetForm, setErrors: (errs: ValidationError[]) => (errors.value 
       </div>
 
       <div class="form-actions">
-        <button type="submit" class="btn btn-primary">
-          {{ isEditing ? 'Update Agent' : 'Add Agent' }}
+        <button type="submit" class="btn btn-primary" :disabled="store.isSaving">
+          {{ store.isSaving ? 'Saving...' : (isEditing ? 'Update Agent' : 'Add Agent') }}
         </button>
         <button type="button" class="btn btn-secondary" @click="handleCancel">
           Cancel
@@ -234,12 +185,17 @@ input.error {
   transition: background-color 0.2s;
 }
 
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .btn-primary {
   background-color: #3b82f6;
   color: white;
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
   background-color: #2563eb;
 }
 

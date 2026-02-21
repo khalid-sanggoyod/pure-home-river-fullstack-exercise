@@ -1,29 +1,20 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import type { Agent, AgentSearchParams, PaginationInfo } from '../types/agent';
+import { useAgentStore } from '../store/agentStore';
+import { useDebouncedFn } from '../../../composables/useDebounce';
+import type { Agent } from '../../../types/agent';
 
-const props = defineProps<{
-  agents: Agent[];
-  loading: boolean;
-  pagination?: PaginationInfo;
-}>();
-
-const emit = defineEmits<{
-  edit: [agent: Agent];
-  delete: [agent: Agent];
-  search: [params: AgentSearchParams];
-  pageChange: [page: number];
-}>();
+const store = useAgentStore();
 
 const searchText = ref('');
 const createdFrom = ref('');
 const createdTo = ref('');
 const showFilters = ref(false);
 
-let debounceTimer: ReturnType<typeof setTimeout>;
+const { debouncedFn: debouncedSearch } = useDebouncedFn(emitSearch);
 
 function emitSearch() {
-  emit('search', {
+  store.search({
     search: searchText.value || undefined,
     createdFrom: createdFrom.value || undefined,
     createdTo: createdTo.value || undefined,
@@ -31,8 +22,7 @@ function emitSearch() {
 }
 
 function handleSearchInput() {
-  clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(emitSearch, 300);
+  debouncedSearch();
 }
 
 function clearFilters() {
@@ -43,9 +33,21 @@ function clearFilters() {
 }
 
 function goToPage(page: number) {
-  if (props.pagination && page >= 1 && page <= props.pagination.totalPages) {
-    emit('pageChange', page);
+  if (store.pagination && page >= 1 && page <= store.pagination.totalPages) {
+    store.goToPage(page);
   }
+}
+
+function handleEdit(agent: Agent) {
+  store.startEditing(agent);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function handleDelete(agent: Agent) {
+  if (!confirm(`Are you sure you want to delete ${agent.firstName} ${agent.lastName}?`)) {
+    return;
+  }
+  await store.deleteAgent(agent);
 }
 
 watch([createdFrom, createdTo], emitSearch);
@@ -95,9 +97,9 @@ function formatDate(dateString: string): string {
       </div>
     </div>
 
-    <div v-if="loading" class="loading">Loading agents...</div>
+    <div v-if="store.isLoadingAgents" class="loading">Loading agents...</div>
 
-    <div v-else-if="agents.length === 0" class="empty-state">
+    <div v-else-if="store.agents.length === 0" class="empty-state">
       <p>No agents found.</p>
     </div>
 
@@ -113,7 +115,7 @@ function formatDate(dateString: string): string {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="agent in agents" :key="agent.id">
+          <tr v-for="agent in store.agents" :key="agent.id">
             <td>{{ agent.firstName }} {{ agent.lastName }}</td>
             <td>
               <a :href="`mailto:${agent.email}`">{{ agent.email }}</a>
@@ -121,29 +123,35 @@ function formatDate(dateString: string): string {
             <td>{{ agent.mobileNumber }}</td>
             <td>{{ formatDate(agent.createdAt) }}</td>
             <td class="actions">
-              <button class="btn btn-edit" @click="emit('edit', agent)">Edit</button>
-              <button class="btn btn-delete" @click="emit('delete', agent)">Delete</button>
+              <button class="btn btn-edit" @click="handleEdit(agent)">Edit</button>
+              <button
+                class="btn btn-delete"
+                :disabled="store.isDeleting"
+                @click="handleDelete(agent)"
+              >
+                Delete
+              </button>
             </td>
           </tr>
         </tbody>
       </table>
 
       <!-- Pagination -->
-      <div v-if="pagination && pagination.totalPages > 1" class="pagination">
+      <div v-if="store.pagination && store.pagination.totalPages > 1" class="pagination">
         <button
           class="btn btn-page"
-          :disabled="pagination.page <= 1"
-          @click="goToPage(pagination.page - 1)"
+          :disabled="store.pagination.page <= 1"
+          @click="goToPage(store.pagination.page - 1)"
         >
           Previous
         </button>
 
         <div class="page-numbers">
           <button
-            v-for="pageNum in pagination.totalPages"
+            v-for="pageNum in store.pagination.totalPages"
             :key="pageNum"
             class="btn btn-page"
-            :class="{ active: pageNum === pagination.page }"
+            :class="{ active: pageNum === store.pagination.page }"
             @click="goToPage(pageNum)"
           >
             {{ pageNum }}
@@ -152,17 +160,17 @@ function formatDate(dateString: string): string {
 
         <button
           class="btn btn-page"
-          :disabled="pagination.page >= pagination.totalPages"
-          @click="goToPage(pagination.page + 1)"
+          :disabled="store.pagination.page >= store.pagination.totalPages"
+          @click="goToPage(store.pagination.page + 1)"
         >
           Next
         </button>
       </div>
 
       <div class="results-count">
-        Showing {{ agents.length }} of {{ pagination?.total || agents.length }} agent(s)
-        <span v-if="pagination && pagination.totalPages > 1">
-          (Page {{ pagination.page }} of {{ pagination.totalPages }})
+        Showing {{ store.agents.length }} of {{ store.pagination?.total || store.agents.length }} agent(s)
+        <span v-if="store.pagination && store.pagination.totalPages > 1">
+          (Page {{ store.pagination.page }} of {{ store.pagination.totalPages }})
         </span>
       </div>
     </template>
@@ -343,6 +351,11 @@ a:hover {
   transition: background-color 0.2s;
 }
 
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .btn-edit {
   background-color: #10b981;
   color: white;
@@ -357,7 +370,7 @@ a:hover {
   color: white;
 }
 
-.btn-delete:hover {
+.btn-delete:hover:not(:disabled) {
   background-color: #dc2626;
 }
 

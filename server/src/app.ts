@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import { apiLimiter } from './middleware/rateLimiter';
 import agentRoutes from './routes/agents';
 
 const app = express();
@@ -7,6 +8,7 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use('/api', apiLimiter);
 
 // Routes
 app.use('/api/agents', agentRoutes);

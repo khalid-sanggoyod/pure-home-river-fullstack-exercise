@@ -455,4 +455,17 @@ describe('Agent API', () => {
       expect(res.body.timestamp).toBeDefined();
     });
   });
+
+  describe('Rate Limiting', () => {
+    it('should have rate limiting middleware configured', async () => {
+      // In test environment, rate limiting is skipped
+      // This test verifies the middleware is properly loaded
+      const { apiLimiter, mutationLimiter } = require('../middleware/rateLimiter');
+
+      expect(apiLimiter).toBeDefined();
+      expect(mutationLimiter).toBeDefined();
+      expect(typeof apiLimiter).toBe('function');
+      expect(typeof mutationLimiter).toBe('function');
+    });
+  });
 });

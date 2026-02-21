@@ -1,0 +1,54 @@
+import { v4 as uuidv4 } from 'uuid';
+import { Agent, CreateAgentInput, UpdateAgentInput } from '../models/agent';
+
+class AgentStore {
+  private agents: Map<string, Agent> = new Map();
+
+  getAll(): Agent[] {
+    return Array.from(this.agents.values());
+  }
+
+  getById(id: string): Agent | undefined {
+    return this.agents.get(id);
+  }
+
+  create(input: CreateAgentInput): Agent {
+    const now = new Date().toISOString();
+    const agent: Agent = {
+      id: uuidv4(),
+      firstName: input.firstName,
+      lastName: input.lastName,
+      email: input.email,
+      mobileNumber: input.mobileNumber,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.agents.set(agent.id, agent);
+    return agent;
+  }
+
+  update(id: string, input: UpdateAgentInput): Agent | undefined {
+    const existing = this.agents.get(id);
+    if (!existing) {
+      return undefined;
+    }
+
+    const updated: Agent = {
+      ...existing,
+      ...(input.firstName !== undefined && { firstName: input.firstName }),
+      ...(input.lastName !== undefined && { lastName: input.lastName }),
+      ...(input.email !== undefined && { email: input.email }),
+      ...(input.mobileNumber !== undefined && { mobileNumber: input.mobileNumber }),
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.agents.set(id, updated);
+    return updated;
+  }
+
+  delete(id: string): boolean {
+    return this.agents.delete(id);
+  }
+}
+
+export const agentStore = new AgentStore();
